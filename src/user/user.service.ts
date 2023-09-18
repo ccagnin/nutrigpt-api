@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { EditUserDto } from './dto';
 
@@ -17,5 +17,23 @@ export class UserService {
     });
 
     return user;
+  }
+
+  async deleteUser(userId: number) {
+    try {
+      const user = await this.prisma.user.delete({
+        where: {
+          id: userId,
+        },
+      });
+
+      return user;
+    } catch (error) {
+      if (error instanceof PrismaService) {
+        throw new NotFoundException('User not found');
+      }
+
+      return error;
+    }
   }
 }
