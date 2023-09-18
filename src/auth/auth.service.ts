@@ -50,7 +50,12 @@ export class AuthService {
 
       if (!isPasswordValid) throw new ForbiddenException('Invalid credentials');
 
-      return this.getToken(user.id, user.email);
+      await this.getToken(user.id, user.email);
+      return {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+      };
     } catch (error) {
       throw error;
     }
