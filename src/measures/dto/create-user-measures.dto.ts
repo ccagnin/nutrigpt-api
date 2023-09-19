@@ -12,4 +12,7 @@ export class CreateUserMeasuresDto {
   @IsNotEmpty()
   @IsNumber()
   age: number;
+
+  @IsNumber()
+  objective: number;
 }

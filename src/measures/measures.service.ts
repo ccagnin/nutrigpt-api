@@ -1,4 +1,8 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { CreateUserMeasuresDto, EditUserMeasureDto } from './dto';
 
@@ -8,11 +12,22 @@ export class MeasuresService {
 
   async createUserMeasures(userId: number, dto: CreateUserMeasuresDto) {
     try {
+      const user = await this.prisma.user.findUnique({
+        where: {
+          id: userId,
+        },
+      });
+
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
       const userMeasures = await this.prisma.measure.create({
         data: {
           initWeight: dto.initWeight,
           height: dto.height,
           age: dto.age,
+          objective: dto.objective,
           user: {
             connect: {
               id: userId,
