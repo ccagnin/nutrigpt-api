@@ -1,6 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { CreateUserMeasuresDto } from './dto';
+import { CreateUserMeasuresDto, EditUserMeasureDto } from './dto';
 
 @Injectable()
 export class MeasuresService {
@@ -22,6 +22,49 @@ export class MeasuresService {
       });
 
       return userMeasures;
+    } catch (error) {
+      return error;
+    }
+  }
+
+  async getMeasureByUserId(userId: number) {
+    try {
+      const measure = await this.prisma.measure.findUnique({
+        where: {
+          userId,
+        },
+      });
+
+      return measure;
+    } catch (error) {
+      return error;
+    }
+  }
+
+  async editUserMeasureById(
+    userId: number,
+    measureId: number,
+    dto: EditUserMeasureDto,
+  ) {
+    try {
+      const measure = await this.prisma.measure.findUnique({
+        where: {
+          measureId: measureId,
+        },
+      });
+
+      if (!measure || measure.userId !== userId)
+        throw new ForbiddenException('Access Denied');
+
+      return await this.prisma.measure.update({
+        where: {
+          measureId: measureId,
+        },
+        data: {
+          updatedWeight: dto.updatedWeight,
+          ...dto,
+        },
+      });
     } catch (error) {
       return error;
     }
