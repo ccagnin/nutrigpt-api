@@ -26,8 +26,9 @@ model User {
 model Measure {
   measureId         Int  @id @default(autoincrement())
   initWeight        Int
-  updatedWeight     Int
+  updatedWeight     Int?
   height            Int
+  age               Int
   userId            Int @unique
   user              User @relation(fields: [userId], references: [id])
   createdAt         DateTime @default(now())
