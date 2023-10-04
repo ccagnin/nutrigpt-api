@@ -5,6 +5,7 @@ import {
   Body,
   Patch,
   Delete,
+  Post,
 } from '@nestjs/common';
 import { User } from '@prisma/client';
 import { GetUser } from 'src/common/decorators/get-user.decorator';
@@ -31,5 +32,12 @@ export class UserController {
   @Delete('profile/delete')
   deleteUser(@GetUser('id') userId: number) {
     return this.userService.deleteUser(userId);
+  }
+
+  @Post('checkEmail')
+  async checkEmail(@Body('email') email: string) {
+    const user = await this.userService.checkEmail(email);
+    const emailExists = !!user;
+    return { emailExists };
   }
 }

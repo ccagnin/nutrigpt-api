@@ -36,4 +36,21 @@ export class UserService {
       return error;
     }
   }
+
+  async checkEmail(email: string) {
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: {
+          email,
+        },
+      });
+      return !!user;
+    } catch (error) {
+      if (error instanceof PrismaService) {
+        throw new NotFoundException('User not found');
+      }
+
+      return error;
+    }
+  }
 }
