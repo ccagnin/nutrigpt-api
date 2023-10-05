@@ -6,6 +6,7 @@ import {
   Patch,
   Delete,
   Post,
+  Query,
 } from '@nestjs/common';
 import { User } from '@prisma/client';
 import { GetUser } from 'src/common/decorators/get-user.decorator';
@@ -39,5 +40,11 @@ export class UserController {
     const user = await this.userService.checkEmail(email);
     const emailExists = !!user;
     return { emailExists };
+  }
+
+  @Get('getUserByEmail')
+  async getUserByEmail(@Query('email') email: string) {
+    const user = await this.userService.getUserByEmail(email);
+    return user;
   }
 }
