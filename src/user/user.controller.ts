@@ -39,6 +39,7 @@ export class UserController {
   async checkEmail(@Body('email') email: string) {
     const user = await this.userService.checkEmail(email);
     const emailExists = !!user;
+    console.log(emailExists);
     return { emailExists };
   }
 
