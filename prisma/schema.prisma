@@ -19,6 +19,9 @@ model User {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   measures        Measure?
+  payments        Payments?
+  subscriptions   Subscriptions?
+  userInfo        UserInfo?
 
   @@map(name: "users")
 }
@@ -36,4 +39,59 @@ model Measure {
   updatedAt         DateTime @updatedAt
 
   @@map(name: "measures")
+}
+
+model Payments {
+  paymentId        Int  @id @default(autoincrement())
+  userId           Int  @unique
+  user             User @relation(fields: [userId], references: [id])
+  status           String
+  planId           Int  @unique
+  plan             Plans @relation(fields: [planId], references: [planId])
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map(name: "payments")
+}
+
+model Plans {
+  planId           Int  @id @default(autoincrement())
+  name             String
+  price            Int
+  description      String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  subscriptions    Subscriptions[]
+
+  payments         Payments[]
+
+  @@map(name: "plans")
+}
+
+model Subscriptions {
+  subscriptionId   Int  @id @default(autoincrement())
+  userId           Int  @unique
+  user             User @relation(fields: [userId], references: [id])
+  planId           Int  @unique
+  plan             Plans @relation(fields: [planId], references: [planId])
+  status           String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map(name: "subscriptions")
+}
+
+model UserInfo {
+  infoId           Int  @id @default(autoincrement())
+  userId           Int @unique
+  user             User @relation(fields: [userId], references: [id])
+  last_6_digits    String
+  card_brand       String
+  subscriptionType String
+  subscriptionId   String
+  payment_date     DateTime
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map(name: "user_info")
 }
