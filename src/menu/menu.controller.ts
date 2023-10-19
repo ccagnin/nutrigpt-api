@@ -11,6 +11,6 @@ export class MenuController {
   @Get('weekly-menu')
   async createUserMenu(@GetUser('id') userId: number) {
     console.log(`User ID: ${userId}`);
-    console.log(await this.menu.createUserMenu(userId));
+    return await this.menu.createUserMenu(userId);
   }
 }

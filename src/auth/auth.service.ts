@@ -50,11 +50,13 @@ export class AuthService {
 
       if (!isPasswordValid) throw new ForbiddenException('Invalid credentials');
 
-      await this.getToken(user.id, user.email);
+      const tokenResponse = await this.getToken(user.id, user.email);
+
       return {
         id: user.id,
         name: user.name,
         email: user.email,
+        token: tokenResponse.access_token,
       };
     } catch (error) {
       throw error;
@@ -71,6 +73,7 @@ export class AuthService {
     };
 
     const secret = this.config.get('JWT_ACCESS_SECRET');
+    console.log('Secret:', secret);
 
     const token = await this.jwt.signAsync(payload, {
       expiresIn: '30d',
@@ -80,5 +83,16 @@ export class AuthService {
     return {
       access_token: token,
     };
+  }
+
+  async checkToken(token: string): Promise<boolean> {
+    try {
+      const decoded = await this.jwt.verifyAsync(token);
+      console.log('Decoded token:', decoded);
+      return !!decoded;
+    } catch (error) {
+      console.error('Error verifying token:', error);
+      return false;
+    }
   }
 }
