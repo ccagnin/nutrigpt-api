@@ -10,5 +10,18 @@ services:
       POSTGRES_DB: nutrigpt-dev
     networks:
       - nutrigpt-network
+
+  nutrigpt-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 3000:3333
+    depends_on:
+      - dev-db
+    networks:
+      - nutrigpt-network
+    environment:
+      DATABASE_URL: postgres://postgres:12345@dev-db:5432/nutrigpt-dev
 networks:
   nutrigpt-network:
