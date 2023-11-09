@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, Patch, UseGuards } from '@nestjs/common';
 import { MenuService } from './menu.service';
 import { GetUser } from 'src/common/decorators/get-user.decorator';
 import { JwtGuard } from 'src/common/guards';
@@ -12,5 +12,18 @@ export class MenuController {
   async createUserMenu(@GetUser('id') userId: number) {
     console.log(`User ID: ${userId}`);
     return await this.menu.createUserMenu(userId);
+  }
+  @UseGuards(JwtGuard)
+  @Patch('new-menu')
+  async updateUserMenu(@GetUser('id') userId: number) {
+    console.log(`User ID: ${userId}`);
+    return await this.menu.updateMenu(userId);
+  }
+
+  @UseGuards(JwtGuard)
+  @Get('get-menu')
+  async getUserMenu(@GetUser('id') userId: number) {
+    console.log(`User ID: ${userId}`);
+    return await this.menu.getMenu(userId);
   }
 }
