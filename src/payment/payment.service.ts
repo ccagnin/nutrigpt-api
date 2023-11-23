@@ -53,10 +53,11 @@ export class PaymentService {
       const date = new Date(Date.now());
       const dateEnd = new Date();
       dateEnd.setDate(date.getDate() + 30);
+      const trialPeriodDays = 7;
       const planPaymentData = {
         preapproval_plan_id: dto.planId,
-        reason: 'NOME DO APP',
-        external_reference: 'REFERÊNCIA DA ASSINATURA (QUALQUER)',
+        reason: 'PineApp',
+        external_reference: '',
         payer_email: dto.email,
         card_token_id: String(cardToken.id),
         auto_recurring: {
@@ -66,6 +67,10 @@ export class PaymentService {
           end_date: dateEnd,
           transaction_amount: dto.amount,
           currency_id: 'BRL',
+          free_trial: {
+            frequency: trialPeriodDays,
+            frequency_type: 'days',
+          },
         },
         back_url: 'URL DE RETORNO (ACONSELHO DEEPLINK)',
         status: 'authorized',
@@ -84,10 +89,38 @@ export class PaymentService {
       );
       console.log(paymentResponse.data);
 
-      const payment = paymentResponse.data;
-      console.log(payment);
+      const preApprovalId = paymentResponse.data.id;
+      console.log(preApprovalId);
 
-      return payment;
+      return {
+        payment: paymentResponse.data,
+        preApprovalId: preApprovalId,
+      };
+    } catch (error) {
+      console.log(error.message);
+      console.log(error.response.data);
+      throw new Error(error.message);
+    }
+  }
+
+  async cancelSubscription(preApprovalId: string) {
+    try {
+      const { accessToken } = this.mercadoPagoConfigService.getConfig();
+      const cancelResponse = await axios.put(
+        `https://api.mercadopago.com/preapproval/${preApprovalId}`,
+        {
+          status: 'cancelled',
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${accessToken}`,
+          },
+        },
+      );
+      console.log(cancelResponse.data);
+
+      return cancelResponse.data;
     } catch (error) {
       console.log(error.message);
       console.log(error.response.data);
