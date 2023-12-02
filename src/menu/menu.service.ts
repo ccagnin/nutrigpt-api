@@ -43,9 +43,88 @@ export class MenuService {
       const weeklyMenuText = await this.generateWeeklyMenu(prompt);
       const weeklyMenu = this.parseWeeklyMenu(weeklyMenuText);
 
+      const userMenu = await this.prisma.userMenu.create({
+        data: {
+          user: {
+            connect: {
+              id: userId,
+            },
+          },
+          menu: JSON.stringify(weeklyMenu),
+        },
+      });
+
+      if (userMenu) {
+        console.log('Menu created successfully');
+      }
+
       return { weeklyMenu };
     } catch (error) {
       throw new Error('Error generating the menu: ' + error.message);
+    }
+  }
+
+  async updateMenu(userId: number) {
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: {
+          id: userId,
+        },
+      });
+
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      // Obtenha as medidas do usuário novamente
+      const measures = await this.prisma.measure.findUnique({
+        where: {
+          userId,
+        },
+      });
+
+      if (!measures) {
+        throw new NotFoundException('Measures not found for this user');
+      }
+
+      const prompt = this.createMenuPrompt(measures);
+
+      const weeklyMenuText = await this.generateWeeklyMenu(prompt);
+      const weeklyMenu = this.parseWeeklyMenu(weeklyMenuText);
+
+      // Atualizar o cardápio no banco de dados
+      const currentDate = new Date();
+      await this.prisma.userMenu.update({
+        where: {
+          userId: userId,
+        },
+        data: {
+          menu: JSON.stringify(this.parseWeeklyMenu(weeklyMenuText)),
+          updatedAt: currentDate,
+        },
+      });
+
+      return { weeklyMenu };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  async getMenu(userId: number) {
+    try {
+      const menu = await this.prisma.userMenu.findUnique({
+        where: {
+          userId,
+        },
+      });
+
+      if (!menu) {
+        throw new NotFoundException('Menu not found');
+      }
+
+      return JSON.parse(menu.menu);
+    } catch (error) {
+      throw error;
     }
   }
 
