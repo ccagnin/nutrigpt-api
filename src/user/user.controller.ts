@@ -40,7 +40,7 @@ export class UserController {
     const user = await this.userService.checkEmail(email);
     const emailExists = !!user;
     console.log(emailExists);
-    return { emailExists };
+    return emailExists;
   }
 
   @Get('getUserByEmail')
