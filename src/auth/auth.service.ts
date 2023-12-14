@@ -32,7 +32,7 @@ export class AuthService {
           throw new ForbiddenException('Email already exists');
         }
       }
-      throw error;
+      return console.log(error);
     }
   }
 
