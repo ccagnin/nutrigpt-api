@@ -139,9 +139,11 @@ export class MenuService {
       'Domingo',
     ];
 
+    const macro = ['Calorias', 'Proteína', 'Gordura', 'Carboidratos'];
+
     const meals = ['Café da manhã', 'Almoço', 'Jantar'];
 
-    const prompt = `Crie um cardápio variado de 7 dias, para cada dia da semana, com café da manhã, almoço e janta, de acordo com as informações do usuário abaixo:
+    const prompt = `Crie um cardápio variado de 7 dias, para cada dia da semana, com café da manhã, almoço e janta, e em cada refeição exibir os macronutrientes, de acordo com as informações do usuário abaixo:
       Peso Inicial: ${measures.initWeight}
       Altura: ${measures.height}
       Idade: ${measures.age}
@@ -150,7 +152,13 @@ export class MenuService {
 
     const dailyMealsPrompt = daysOfWeek
       .map((day) => {
-        const dayMeals = meals.map((meal) => `${meal}: `).join('\n');
+        const dayMeals = meals
+          .map((meal) => {
+            const mealPrompt = `${meal}: `;
+            const macroPrompt = macro.map((macro) => `${macro}: `).join(', ');
+            return `${mealPrompt}\n${macroPrompt}`;
+          })
+          .join('\n');
         return `${day}\n${dayMeals}`;
       })
       .join('\n\n');
@@ -160,16 +168,15 @@ export class MenuService {
 
   private async generateWeeklyMenu(prompt: string): Promise<string> {
     try {
-      const params = {
-        prompt,
-        max_tokens: 1500,
-        temperature: 0.7,
-        model: 'text-davinci-003',
+      const params: OpenAI.ChatCompletionCreateParams = {
+        model: 'gpt-4',
+        messages: [{ role: 'assistant', content: prompt }],
       };
 
-      const response = await this.openAiApi.completions.create(params);
+      console.log('API Request Params:', params);
+      const response = await this.openAiApi.chat.completions.create(params);
 
-      const weeklyMenuText = response.choices[0]?.text?.trim();
+      const weeklyMenuText = response.choices[0]?.message?.content?.trim();
 
       return weeklyMenuText;
     } catch (error) {
@@ -182,9 +189,9 @@ export class MenuService {
     const days = weeklyMenuText.split('\n\n').map((dayText) => {
       const lines = dayText.split('\n');
       const dayName = lines[0];
-      const cafeDaManha = lines[1].split(':')[1].trim();
-      const almoco = lines[2].split(':')[1].trim();
-      const jantar = lines[3].split(':')[1].trim();
+      const cafeDaManha = this.parseMeal(lines[1]);
+      const almoco = this.parseMeal(lines[2]);
+      const jantar = this.parseMeal(lines[3]);
 
       return {
         day: dayName,
@@ -195,5 +202,31 @@ export class MenuService {
     });
 
     return days;
+  }
+
+  private parseMeal(mealText: string): any {
+    const mealParts = mealText.split(':');
+    const mealName = mealParts[0].trim();
+    const macroPart = mealParts[1].trim();
+    const macros = this.parseMacros(macroPart);
+
+    return {
+      meal: mealName,
+      macros,
+    };
+  }
+
+  private parseMacros(macroPart: string): any {
+    const macroPairs = macroPart
+      .split(',')
+      .map((pair) => pair.trim().split(':'));
+    const macros = {};
+
+    for (const pair of macroPairs) {
+      const [macroName, macroValue] = pair;
+      macros[macroName] = parseFloat(macroValue);
+    }
+
+    return macros;
   }
 }

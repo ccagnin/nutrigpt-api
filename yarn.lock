@@ -4325,10 +4325,10 @@
     "is-inside-container" "^1.0.0"
     "is-wsl" "^2.2.0"
 
-"openai@^4.8.0":
-  "integrity" "sha512-CnLZvHi2x4pIoGAWCaj3jHi1a6NA4oFBL6mJDSXkIR5A/wv6lven7uL2gxMevjGBLA7OqYqis3Z2PMluiGauVw=="
-  "resolved" "https://registry.npmjs.org/openai/-/openai-4.8.0.tgz"
-  "version" "4.8.0"
+"openai@^4.24.3":
+  "integrity" "sha512-trXt1hwYmJTwQCzYZiKijOYslqvterDwohTncadZOTXXJh+XV4Jf9KcLP9dDRlXh0mAxGXaVzbpiNgAXa2khNQ=="
+  "resolved" "https://registry.npmjs.org/openai/-/openai-4.24.3.tgz"
+  "version" "4.24.3"
   dependencies:
     "@types/node" "^18.11.18"
     "@types/node-fetch" "^2.6.4"
@@ -4338,6 +4338,7 @@
     "form-data-encoder" "1.7.2"
     "formdata-node" "^4.3.2"
     "node-fetch" "^2.6.7"
+    "web-streams-polyfill" "^3.2.1"
 
 "optionator@^0.9.3":
   "integrity" "sha512-JjCoypp+jKn1ttEFExxhetCKeJt9zhAgAve5FXHixTvFDW/5aEktX9bufBKLRRMdU7bNtpLfcGu94B3cdEJgjg=="
@@ -5444,6 +5445,11 @@
   "version" "1.0.1"
   dependencies:
     "defaults" "^1.0.3"
+
+"web-streams-polyfill@^3.2.1":
+  "integrity" "sha512-3pRGuxRF5gpuZc0W+EpwQRmCD7gRqcDOMt688KmdlDAgAyaB1XlN0zq2njfDNm44XVdIouE7pZ6GzbdyH47uIQ=="
+  "resolved" "https://registry.npmjs.org/web-streams-polyfill/-/web-streams-polyfill-3.3.2.tgz"
+  "version" "3.3.2"
 
 "web-streams-polyfill@4.0.0-beta.3":
   "integrity" "sha512-QW95TCTaHmsYfHDybGMwO5IJIM93I/6vTRk+daHTWFPhwh+C8Cg7j7XyKrwrj8Ib6vYXe0ocYNrmzY4xAAN6ug=="
