@@ -16,7 +16,7 @@ export class MenuService {
     this.openAiApi = new OpenAI(configuration);
   }
 
-  async createUserMenu(userId: number): Promise<{ weeklyMenu: any[] }> {
+  async createUserMenu(userId: number): Promise<{ weeklyMenu: string }> {
     try {
       const user = await this.prisma.user.findUnique({
         where: {
@@ -41,7 +41,6 @@ export class MenuService {
       const prompt = this.createMenuPrompt(measures);
 
       const weeklyMenuText = await this.generateWeeklyMenu(prompt);
-      const weeklyMenu = this.parseWeeklyMenu(weeklyMenuText);
 
       const userMenu = await this.prisma.userMenu.create({
         data: {
@@ -50,7 +49,7 @@ export class MenuService {
               id: userId,
             },
           },
-          menu: JSON.stringify(weeklyMenu),
+          menu: weeklyMenuText,
         },
       });
 
@@ -58,7 +57,7 @@ export class MenuService {
         console.log('Menu created successfully');
       }
 
-      return { weeklyMenu };
+      return { weeklyMenu: weeklyMenuText };
     } catch (error) {
       throw new Error('Error generating the menu: ' + error.message);
     }
@@ -72,39 +71,61 @@ export class MenuService {
         },
       });
 
+      console.log(user);
+
       if (!user) {
         throw new NotFoundException('User not found');
       }
 
-      // Obtenha as medidas do usuário novamente
       const measures = await this.prisma.measure.findUnique({
         where: {
           userId,
         },
       });
 
+      console.log(measures);
+
       if (!measures) {
         throw new NotFoundException('Measures not found for this user');
       }
 
       const prompt = this.createMenuPrompt(measures);
+      console.log(prompt);
 
       const weeklyMenuText = await this.generateWeeklyMenu(prompt);
-      const weeklyMenu = this.parseWeeklyMenu(weeklyMenuText);
 
-      // Atualizar o cardápio no banco de dados
       const currentDate = new Date();
-      await this.prisma.userMenu.update({
+
+      const existingUserMenu = await this.prisma.userMenu.findUnique({
         where: {
           userId: userId,
         },
-        data: {
-          menu: JSON.stringify(this.parseWeeklyMenu(weeklyMenuText)),
-          updatedAt: currentDate,
-        },
       });
 
-      return { weeklyMenu };
+      if (existingUserMenu) {
+        await this.prisma.userMenu.update({
+          where: {
+            userId: userId,
+          },
+          data: {
+            menu: JSON.stringify(weeklyMenuText),
+            updatedAt: currentDate,
+          },
+        });
+      } else {
+        await this.prisma.userMenu.create({
+          data: {
+            user: {
+              connect: {
+                id: userId,
+              },
+            },
+            menu: JSON.stringify(weeklyMenuText),
+          },
+        });
+      }
+      console.log({ weeklyMenu: weeklyMenuText });
+      return { weeklyMenu: weeklyMenuText };
     } catch (error) {
       throw error;
     }
@@ -122,111 +143,58 @@ export class MenuService {
         throw new NotFoundException('Menu not found');
       }
 
-      return JSON.parse(menu.menu);
+      return { weeklyMenu: menu.menu };
     } catch (error) {
       throw error;
     }
   }
 
   private createMenuPrompt(measures: any): string {
-    const daysOfWeek = [
-      'Segunda-feira',
-      'Terça-feira',
-      'Quarta-feira',
-      'Quinta-feira',
-      'Sexta-feira',
-      'Sábado',
-      'Domingo',
-    ];
+    const userId = measures?.user?.id;
+    const weight =
+      measures.initWeight !== undefined
+        ? measures.initWeight.toString()
+        : 'undefined';
+    const age =
+      measures.age !== undefined ? measures.age.toString() : 'undefined';
+    const height =
+      measures.height !== undefined ? measures.height.toString() : 'undefined';
+    const goal =
+      measures.objective !== undefined
+        ? measures.objective.toString()
+        : 'undefined';
 
-    const macro = ['Calorias', 'Proteína', 'Gordura', 'Carboidratos'];
+    console.log(weight, age, height, goal);
 
-    const meals = ['Café da manhã', 'Almoço', 'Jantar'];
-
-    const prompt = `Crie um cardápio variado de 7 dias, para cada dia da semana, com café da manhã, almoço e janta, e em cada refeição exibir os macronutrientes, de acordo com as informações do usuário abaixo:
-      Peso Inicial: ${measures.initWeight}
-      Altura: ${measures.height}
-      Idade: ${measures.age}
-      Objetivo: ${measures.objective === 0 ? 'Perda de Peso' : 'Ganho de massa'}
-      A resposta precisa estar em português do brasil e não podemos repetir a mesma comida todos os dias.\n\n`;
-
-    const dailyMealsPrompt = daysOfWeek
-      .map((day) => {
-        const dayMeals = meals
-          .map((meal) => {
-            const mealPrompt = `${meal}: `;
-            const macroPrompt = macro.map((macro) => `${macro}: `).join(', ');
-            return `${mealPrompt}\n${macroPrompt}`;
-          })
-          .join('\n');
-        return `${day}\n${dayMeals}`;
-      })
-      .join('\n\n');
-
-    return `${prompt}${dailyMealsPrompt}`;
+    return `crie um menu semanal para o usuário ${userId} com café da manhã, almoço e janta para cada dia da semana e os valores dos macros para cada refeição(carboidratos, proteínas e gordura), com altura: ${height}, peso: ${weight}, idade: ${age}, objetivo (0 para perda de peso, 1 para ganho de massa): ${goal}\n`;
   }
 
-  private async generateWeeklyMenu(prompt: string): Promise<string> {
+  private async generateWeeklyMenu(prompt: string): Promise<any> {
     try {
-      const params: OpenAI.ChatCompletionCreateParams = {
-        model: 'gpt-4',
-        messages: [{ role: 'assistant', content: prompt }],
+      const completion = await this.openAiApi.chat.completions.create(
+        {
+          messages: [{ role: 'user', content: prompt }],
+          model: 'gpt-3.5-turbo',
+        },
+        {
+          timeout: 600000,
+        },
+      );
+
+      return {
+        id: completion.id,
+        message: completion.choices[0]?.message?.content,
+        usage: completion.usage,
       };
 
-      console.log('API Request Params:', params);
-      const response = await this.openAiApi.chat.completions.create(params);
+      // if (!weeklyMenuText) {
+      //   throw new Error('Weekly menu text is undefined or empty');
+      // }
 
-      const weeklyMenuText = response.choices[0]?.message?.content?.trim();
-
-      return weeklyMenuText;
+      // return weeklyMenuText;
     } catch (error) {
       console.error('Erro ao gerar o cardápio semanal:', error);
       throw new Error('Erro ao gerar o cardápio semanal');
     }
-  }
-
-  private parseWeeklyMenu(weeklyMenuText: string): any[] {
-    const days = weeklyMenuText.split('\n\n').map((dayText) => {
-      const lines = dayText.split('\n');
-      const dayName = lines[0];
-      const cafeDaManha = this.parseMeal(lines[1]);
-      const almoco = this.parseMeal(lines[2]);
-      const jantar = this.parseMeal(lines[3]);
-
-      return {
-        day: dayName,
-        cafeDaManha,
-        almoco,
-        jantar,
-      };
-    });
-
-    return days;
-  }
-
-  private parseMeal(mealText: string): any {
-    const mealParts = mealText.split(':');
-    const mealName = mealParts[0].trim();
-    const macroPart = mealParts[1].trim();
-    const macros = this.parseMacros(macroPart);
-
-    return {
-      meal: mealName,
-      macros,
-    };
-  }
-
-  private parseMacros(macroPart: string): any {
-    const macroPairs = macroPart
-      .split(',')
-      .map((pair) => pair.trim().split(':'));
-    const macros = {};
-
-    for (const pair of macroPairs) {
-      const [macroName, macroValue] = pair;
-      macros[macroName] = parseFloat(macroValue);
-    }
-
-    return macros;
   }
 }
