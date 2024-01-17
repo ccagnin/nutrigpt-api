@@ -16,51 +16,34 @@ export class MenuService {
     this.openAiApi = new OpenAI(configuration);
   }
 
-  async createUserMenu(userId: number): Promise<{ weeklyMenu: string }> {
-    try {
-      const user = await this.prisma.user.findUnique({
-        where: {
-          id: userId,
-        },
-      });
+  async createUserMenu(userId: number) {
+    // Verifique se o usuário e suas medidas existem
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    const measures = await this.prisma.measure.findFirst({
+      where: { userId: userId },
+      orderBy: { createdAt: 'desc' },
+    });
 
-      if (!user) {
-        throw new NotFoundException('User not found');
-      }
-
-      const measures = await this.prisma.measure.findUnique({
-        where: {
-          userId,
-        },
-      });
-
-      if (!measures) {
-        throw new NotFoundException('Measures not found for this user');
-      }
-
-      const prompt = this.createMenuPrompt(measures);
-
-      const weeklyMenuText = await this.generateWeeklyMenu(prompt);
-
-      const userMenu = await this.prisma.userMenu.create({
-        data: {
-          user: {
-            connect: {
-              id: userId,
-            },
-          },
-          menu: weeklyMenuText,
-        },
-      });
-
-      if (userMenu) {
-        console.log('Menu created successfully');
-      }
-
-      return { weeklyMenu: weeklyMenuText };
-    } catch (error) {
-      throw new Error('Error generating the menu: ' + error.message);
+    if (!user || !measures) {
+      throw new Error('Usuário ou medidas não encontrados');
     }
+
+    // Crie o prompt para a API do OpenAI
+    const prompt = this.createMenuPrompt(measures);
+
+    // Gere o menu semanal e mapeie para o formato JSON
+    const weeklyMenuText = await this.generateWeeklyMenu(prompt);
+    const weeklyMenuJson = this.mapOpenAiResponseToMenu(weeklyMenuText);
+
+    // Salve o menu no banco de dados
+    const menu = await this.prisma.userMenu.create({
+      data: {
+        userId: userId,
+        menu: weeklyMenuJson,
+      },
+    });
+
+    return menu;
   }
 
   async updateMenu(userId: number) {
@@ -93,6 +76,7 @@ export class MenuService {
       console.log(prompt);
 
       const weeklyMenuText = await this.generateWeeklyMenu(prompt);
+      const weeklyMenuJson = this.mapOpenAiResponseToMenu(weeklyMenuText);
 
       const currentDate = new Date();
 
@@ -108,7 +92,7 @@ export class MenuService {
             userId: userId,
           },
           data: {
-            menu: JSON.stringify(weeklyMenuText),
+            menu: JSON.stringify(weeklyMenuJson),
             updatedAt: currentDate,
           },
         });
@@ -120,12 +104,12 @@ export class MenuService {
                 id: userId,
               },
             },
-            menu: JSON.stringify(weeklyMenuText),
+            menu: JSON.stringify(weeklyMenuJson),
           },
         });
       }
-      console.log({ weeklyMenu: weeklyMenuText });
-      return { weeklyMenu: weeklyMenuText };
+      console.log({ weeklyMenu: weeklyMenuJson });
+      return { weeklyMenu: weeklyMenuJson };
     } catch (error) {
       throw error;
     }
@@ -196,5 +180,29 @@ export class MenuService {
       console.error('Erro ao gerar o cardápio semanal:', error);
       throw new Error('Erro ao gerar o cardápio semanal');
     }
+  }
+
+  private mapOpenAiResponseToMenu(response: any): any {
+    const days = response.message.split('\n\n');
+    const weeklyMenu = {};
+
+    days.forEach((day) => {
+      const lines = day.split('\n');
+      const dayName = lines[0].replace(':', '');
+      const dayMeals = {};
+
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i];
+
+        if (line.startsWith('- ')) {
+          const [title, description] = line.slice(2).split(': ');
+          dayMeals[title.trim()] = description.trim();
+        }
+      }
+
+      weeklyMenu[dayName.trim()] = dayMeals;
+    });
+
+    return { weeklyMenu };
   }
 }
