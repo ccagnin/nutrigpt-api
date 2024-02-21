@@ -17,103 +17,109 @@ export class MenuService {
   }
 
   async createUserMenu(userId: number) {
-    // Verifique se o usuário e suas medidas existem
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    const measures = await this.prisma.measure.findFirst({
-      where: { userId: userId },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    if (!user || !measures) {
-      throw new Error('Usuário ou medidas não encontrados');
-    }
-
-    // Crie o prompt para a API do OpenAI
-    const prompt = this.createMenuPrompt(measures);
-
-    // Gere o menu semanal e mapeie para o formato JSON
-    const weeklyMenuText = await this.generateWeeklyMenu(prompt);
-    const weeklyMenuJson = this.mapOpenAiResponseToMenu(weeklyMenuText);
-
-    // Salve o menu no banco de dados
-    const menu = await this.prisma.userMenu.create({
-      data: {
-        userId: userId,
-        menu: weeklyMenuJson,
-      },
-    });
-
-    return menu;
-  }
-
-  async updateMenu(userId: number) {
     try {
-      const user = await this.prisma.user.findUnique({
-        where: {
-          id: userId,
-        },
+      const user = await this.prisma.user.findUnique({ where: { id: userId } });
+      const measures = await this.prisma.measure.findFirst({
+        where: { userId: userId },
+        orderBy: { createdAt: 'desc' },
       });
 
-      console.log(user);
-
-      if (!user) {
-        throw new NotFoundException('User not found');
-      }
-
-      const measures = await this.prisma.measure.findUnique({
-        where: {
-          userId,
-        },
-      });
-
-      console.log(measures);
-
-      if (!measures) {
-        throw new NotFoundException('Measures not found for this user');
+      if (!user || !measures) {
+        throw new Error('Usuário ou medidas não encontrados');
       }
 
       const prompt = this.createMenuPrompt(measures);
       console.log(prompt);
 
       const weeklyMenuText = await this.generateWeeklyMenu(prompt);
-      const weeklyMenuJson = this.mapOpenAiResponseToMenu(weeklyMenuText);
-
-      const currentDate = new Date();
-
-      const existingUserMenu = await this.prisma.userMenu.findUnique({
-        where: {
+      console.log(weeklyMenuText);
+      const menu = await this.prisma.userMenu.upsert({
+        where: { userId: userId },
+        update: { menu: weeklyMenuText },
+        create: {
           userId: userId,
+          menu: weeklyMenuText,
         },
       });
 
-      if (existingUserMenu) {
-        await this.prisma.userMenu.update({
-          where: {
-            userId: userId,
-          },
-          data: {
-            menu: JSON.stringify(weeklyMenuJson),
-            updatedAt: currentDate,
-          },
-        });
-      } else {
-        await this.prisma.userMenu.create({
-          data: {
-            user: {
-              connect: {
-                id: userId,
-              },
-            },
-            menu: JSON.stringify(weeklyMenuJson),
-          },
-        });
-      }
-      console.log({ weeklyMenu: weeklyMenuJson });
-      return { weeklyMenu: weeklyMenuJson };
+      console.log(menu);
+      const json = this.mapOpenAiResponseToMenu(weeklyMenuText);
+      console.log(json);
+
+      return json;
     } catch (error) {
       throw error;
     }
   }
+
+  // async updateMenu(userId: number) {
+  //   try {
+  //     const user = await this.prisma.user.findUnique({
+  //       where: {
+  //         id: userId,
+  //       },
+  //     });
+
+  //     console.log(user);
+
+  //     if (!user) {
+  //       throw new NotFoundException('User not found');
+  //     }
+
+  //     const measures = await this.prisma.measure.findUnique({
+  //       where: {
+  //         userId,
+  //       },
+  //     });
+
+  //     console.log(measures);
+
+  //     if (!measures) {
+  //       throw new NotFoundException('Measures not found for this user');
+  //     }
+
+  //     const prompt = this.createMenuPrompt(measures);
+  //     console.log(prompt);
+
+  //     const weeklyMenuText = await this.generateWeeklyMenu(prompt);
+  //     // const weeklyMenuJson = this.mapOpenAiResponseToMenu(weeklyMenuText);
+
+  //     const currentDate = new Date();
+
+  //     const existingUserMenu = await this.prisma.userMenu.findUnique({
+  //       where: {
+  //         userId: userId,
+  //       },
+  //     });
+
+  //     if (existingUserMenu) {
+  //       await this.prisma.userMenu.update({
+  //         where: {
+  //           userId: userId,
+  //         },
+  //         data: {
+  //           menu: JSON.stringify(weeklyMenuText),
+  //           updatedAt: currentDate,
+  //         },
+  //       });
+  //     } else {
+  //       await this.prisma.userMenu.create({
+  //         data: {
+  //           user: {
+  //             connect: {
+  //               id: userId,
+  //             },
+  //           },
+  //           menu: JSON.stringify(weeklyMenuJson),
+  //         },
+  //       });
+  //     }
+  //     console.log({ weeklyMenu: weeklyMenuJson });
+  //     return { weeklyMenu: weeklyMenuJson };
+  //   } catch (error) {
+  //     throw error;
+  //   }
+  // }
 
   async getMenu(userId: number) {
     try {
@@ -127,7 +133,11 @@ export class MenuService {
         throw new NotFoundException('Menu not found');
       }
 
-      return { weeklyMenu: menu.menu };
+      const parsedMenu = this.mapOpenAiResponseToMenu(menu.menu);
+
+      if (!parsedMenu) return this.getMenu(userId);
+
+      return { weeklyMenu: parsedMenu };
     } catch (error) {
       throw error;
     }
@@ -150,10 +160,24 @@ export class MenuService {
 
     console.log(weight, age, height, goal);
 
-    return `crie um menu semanal para o usuário ${userId} com café da manhã, almoço e janta para cada dia da semana e os valores dos macros para cada refeição(carboidratos, proteínas e gordura), com altura: ${height}, peso: ${weight}, idade: ${age}, objetivo (0 para perda de peso, 1 para ganho de massa): ${goal}\n`;
+    return `crie um menu semanal para o usuário ${userId} com café da manhã, almoço e janta para cada dia da semana e os valores dos macros para cada refeição
+    (carboidratos, proteínas e gordura), com altura: ${height}, peso: ${weight}, idade: ${age}, objetivo (0 para perda de peso, 1 para ganho de massa): ${goal}\n
+    a resposta precisa estar padronizada no seguinte modelo (exemplo):
+    "Segunda-feira:": {
+      "Café da manhã": {
+        "Ingredientes": "Vitamina de banana com aveia e whey protein",
+        "Macros: {
+          "Carboidratos": "30g",
+          "Proteínas": "20g",
+          "Gordura": "5g",
+        }
+      }
+    }
+    isso para todas as refeições.
+      `;
   }
 
-  private async generateWeeklyMenu(prompt: string): Promise<any> {
+  async generateWeeklyMenu(prompt: string): Promise<string> {
     try {
       const completion = await this.openAiApi.chat.completions.create(
         {
@@ -165,44 +189,43 @@ export class MenuService {
         },
       );
 
-      return {
-        id: completion.id,
-        message: completion.choices[0]?.message?.content,
-        usage: completion.usage,
-      };
+      console.log(completion);
 
-      // if (!weeklyMenuText) {
-      //   throw new Error('Weekly menu text is undefined or empty');
-      // }
+      if (completion.choices && completion.choices.length > 0) {
+        const fullMessage = completion.choices[0]?.message?.content;
 
-      // return weeklyMenuText;
+        return typeof fullMessage === 'string'
+          ? fullMessage
+          : JSON.stringify(fullMessage);
+      }
+
+      throw new Error('Conteúdo da resposta não encontrado');
     } catch (error) {
       console.error('Erro ao gerar o cardápio semanal:', error);
       throw new Error('Erro ao gerar o cardápio semanal');
     }
   }
 
-  private mapOpenAiResponseToMenu(response: any): any {
-    const days = response.message.split('\n\n');
-    const weeklyMenu = {};
+  private mapOpenAiResponseToMenu(response: string): any {
+    const menuObj = JSON.parse(response);
 
-    days.forEach((day) => {
-      const lines = day.split('\n');
-      const dayName = lines[0].replace(':', '');
-      const dayMeals = {};
+    const formattedMenu = {};
 
-      for (let i = 1; i < lines.length; i++) {
-        const line = lines[i];
+    for (const day in menuObj) {
+      formattedMenu[day + ':'] = {};
 
-        if (line.startsWith('- ')) {
-          const [title, description] = line.slice(2).split(': ');
-          dayMeals[title.trim()] = description.trim();
-        }
+      for (const meal in menuObj[day]) {
+        formattedMenu[day + ':'][meal] = {
+          Ingredientes: menuObj[day][meal]['Ingredientes'],
+          'Macros:': {
+            Carboidratos: menuObj[day][meal]['Macros']['Carboidratos'],
+            Proteínas: menuObj[day][meal]['Macros']['Proteínas'],
+            Gordura: menuObj[day][meal]['Macros']['Gordura'],
+          },
+        };
       }
+    }
 
-      weeklyMenu[dayName.trim()] = dayMeals;
-    });
-
-    return { weeklyMenu };
+    return formattedMenu;
   }
 }
