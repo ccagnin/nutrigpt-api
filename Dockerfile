@@ -8,5 +8,5 @@ RUN npm install
 
 EXPOSE 3333
 
-CMD ["npm", "run", "start:prod", "npx", "prisma", "migrate", "deploy"]
+CMD ["nest", "start", "npx", "prisma", "migrate", "deploy"]
 
