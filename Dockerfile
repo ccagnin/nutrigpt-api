@@ -9,4 +9,4 @@ RUN npm install
 
 EXPOSE 3333
 
-CMD ["nest" "start"]
+CMD ["nest", "start", "npx", "prisma", "migrate", "deploy"]
