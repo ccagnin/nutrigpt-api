@@ -8,18 +8,6 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  password = env("DATABASE_PASSWORD")
-  user     = env("DATABASE_USER")
-  pgdata   = env("PGDATA")
-  pgdatabase = env("PGDATABASE")
-  pghost = env("PGHOST")
-  pgport = env("PGPORT")
-  pgpassword = env("PGPASSWORD")
-  pguser = env("PGUSER")
-  postgresdb = env("POSTGRES_DB")
-  postgrespassword = env("POSTGRES_PASSWORD")
-  postgresuser = env("POSTGRES_USER")
-  sslcertdays = env("SSL_CERT_DAYS")
 }
 
 model User {
