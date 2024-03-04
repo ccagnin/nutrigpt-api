@@ -4,9 +4,9 @@ WORKDIR /usr/nutrigpt-api
 
 COPY . .
 
+RUN npm install -g @nestjs/cli
 RUN npm install
 
 EXPOSE 3333
 
-CMD ["nest", "start", "npx", "prisma", "migrate", "deploy"]
-
+CMD ["npm", "run", "start:prod"]
